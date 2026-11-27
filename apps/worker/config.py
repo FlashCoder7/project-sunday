@@ -91,12 +91,23 @@ APPROVAL_HOLD_SECONDS = 5
 # a container has no ~/Projects/PersonalAI. The default is unchanged, so the Mac
 # behaves exactly as before unless something deliberately sets the variable.
 #
+# Resolved ONCE, here. `file_ops.file_write` resolves the path it is about to
+# write and then asks whether it sits under the root; if the root itself is a
+# symlink, that comparison is between a resolved path and an unresolved one and
+# never matches. On the Mac `~/Projects/PersonalAI` became a symlink to
+# ~/Developer/project-sunday on 17 Nov, which turned every file_write into
+# "Error: path outside allowed root" — the check was working, on two different
+# spellings of the same directory. Resolving here also makes an env var that
+# points at a symlink behave like a plain directory. The container's `/data` is
+# absolute and not a link, so it resolves to itself.
+#
 # This is a safety boundary (file_write cannot escape it), so it is worth being
 # explicit that it is now only as trustworthy as the environment. That is an
 # acceptable trade here: the same environment already holds the service-role
 # key, so anything that can set this can do far worse directly.
 ALLOWED_WRITE_ROOT = Path(os.getenv(
-    "ALLOWED_WRITE_ROOT", str(Path.home() / "Projects" / "PersonalAI")))
+    "ALLOWED_WRITE_ROOT",
+    str(Path.home() / "Projects" / "PersonalAI"))).expanduser().resolve()
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
